@@ -24,21 +24,23 @@
     </div>
     <div>
       <div class="card">
-        <h5 class="card-header">Performance Report</h5>
+        <h5 class="card-header">Availability Report</h5>
         <div class="table-responsive text-nowrap">
           <table class="table">
             <thead>
             <tr>
-              <th>Gross Sales (GBP)</th>
-              <th>Orders Delivered</th>
-              <th>Average Order Value</th>
+              <th>Open Rate</th>
+              <th>Total Rejected Orders</th>
+              <th>Percentage of Rejected Orders</th>
+              <th>Order Value of Rejected Orders</th>
             </tr>
             </thead>
             <tbody class="table-border-bottom-0">
             <tr>
-              <td>£{{$grossSales}}</td>
-              <td>{{$ordersDelivered}}</td>
-              <td>£{{$averageOrderValue}}</td>
+              <td>{{$openRate}}</td>
+              <td>{{$totalRejectedOrdersCount}}</td>
+              <td>{{$ordersRejectedPercentage}}</td>
+              <td>£{{$orderValueRejectedOrders}}</td>
             </tr>
             </tbody>
           </table>

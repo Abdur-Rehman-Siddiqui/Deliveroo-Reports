@@ -5,6 +5,8 @@ namespace App\Helpers;
 use App\Models\OrderStatus;
 use App\Models\OrderStatusLog;
 use App\Models\OrderItem;
+use App\Models\Order;
+use DateTime;
 
 class  OrderHelper
 {
@@ -19,6 +21,30 @@ class  OrderHelper
   private const WEBHOOK_VERSION = '1';
 
 
+  public const ORDER_STATUS_PLACED = '1';
+
+
+  public const ORDERS_STATUS_REJECTED = '2';
+
+  public const ORDER_PENDING_ACCEPTED = '3';
+
+  public const ORDER_STATUS_CONFIRMED = '4';
+
+  public const ORDER_STATUS_CANCELED = '5';
+
+  public const ORDER_STATUS_PENDING = '6';
+
+  public const ORDER_STATUS_DELIVERED = '7';
+
+  public const ORDER_STATUS_IN_KITCHEN = '8';
+
+  public const ORDER_STATUS_READY_FOR_COLLECTION = '9';
+
+  public const ORDER_STATUS_READY_FOR_COLLECTION_SOON = '10';
+
+  public const ORDER_STATUS_COLLECTED = '11';
+
+
   /**
    * @var OrderStatus
    */
@@ -31,21 +57,28 @@ class  OrderHelper
    * @var OrderItem
    */
   protected $orderItem;
+  /**
+   * @var Order
+   */
+  protected $order;
 
   /**
    * @param OrderStatus $orderStatus
    * @param OrderStatusLog $orderStatusLog
    * @param OrderItem $orderItem
+   * @param Order $order
    */
   public function __construct(
     OrderStatus    $orderStatus,
     OrderStatusLog $orderStatusLog,
-    OrderItem      $orderItem
+    OrderItem      $orderItem,
+    Order          $order
   )
   {
     $this->orderStatus = $orderStatus;
     $this->orderStatusLog = $orderStatusLog;
     $this->orderItem = $orderItem;
+    $this->order = $order;
   }
 
   /**
@@ -65,7 +98,11 @@ class  OrderHelper
     $data['customer_loyalty'] = $orderData['customer']['loyalty']['card_number'];
     $data['prepare_for'] = $orderData['prepare_for'];
     $data['deliveroo_order_id'] = $orderData['id'];
-
+    foreach ($orderData['status_log'] as $statusLog) {
+      if ($statusLog['status'] == 'pending') {
+        $data['order_date'] = $this->changeDateFormat($statusLog['at']);
+      }
+    }
     return $data;
   }
 
@@ -76,22 +113,23 @@ class  OrderHelper
   public function mapOrderStatusLogs($orderData)
   {
     $statusLogs = $orderData['status_log'];
-    $prepStages=$orderData['prep_stages'];
-    $count=0;
-    foreach ($statusLogs as $logs)
-    {
+    $count = 0;
+    foreach ($statusLogs as $logs) {
       $data[$count]['order_id'] = $orderData['order_id'];
       $data[$count]['status_id'] = $this->orderStatus->getOrderStatus($logs['status']);
       $data[$count]['at'] = $logs['at'];
       $count++;
     }
-    foreach ($prepStages as $stage)
-    {
-      $data[$count]['order_id'] = $orderData['order_id'];
-      $data[$count]['status_id'] = $this->orderStatus->getOrderStatus($stage['stage']);
-      $data[$count]['at'] = $stage['occurred_at'];
-      $count++;
+    if (array_key_exists('prep_stages', $orderData)) {
+      $prepStages = $orderData['prep_stages'];
+      foreach ($prepStages as $stage) {
+        $data[$count]['order_id'] = $orderData['order_id'];
+        $data[$count]['status_id'] = $this->orderStatus->getOrderStatus($stage['stage']);
+        $data[$count]['at'] = $stage['occurred_at'];
+        $count++;
+      }
     }
+
     return $data;
   }
 
@@ -103,7 +141,7 @@ class  OrderHelper
   public function mapOrderItems($orderData)
   {
     $items = $orderData['items'];
-    $count=0;
+    $count = 0;
     foreach ($items as $item) {
       $data[$count]['order_id'] = $orderData['order_id'];
       $data[$count]['restaurant_id'] = $orderData['brand_id'];
@@ -125,6 +163,10 @@ class  OrderHelper
     return self::guid == $guid ? true : false;
   }
 
+  /**
+   * @param $hash
+   * @return bool
+   */
   public function checkHmacHash($hash)
   {
     $string = self::guid . self::secret;
@@ -132,11 +174,19 @@ class  OrderHelper
     return $hashedValue == $hash ? true : false;
   }
 
+  /**
+   * @param $version
+   * @return bool
+   */
   public function checkVersion($version)
   {
     return self::WEBHOOK_VERSION == $version ? true : false;
   }
 
+  /**
+   * @param $type
+   * @return bool
+   */
   public function checkPayloadType($type)
   {
     if (self::ORDER_NEW_PAYLOAD_TYPE == $type) {
@@ -147,4 +197,80 @@ class  OrderHelper
       return false;
     }
   }
+
+
+  public function getPreprationTime($orders)
+  {
+    $intervals = [];
+    foreach ($orders as $order) {
+      $logs = $order->StatusLogs()->whereIn('status_id', [3, 11])->get();
+      if (count($logs) < 2) {
+        continue;
+      }
+      $acceptedTime = new DateTime($logs[0]['at']);
+      $collectionTime = new DateTime($logs[1]['at']);
+      $interval = $collectionTime->diff($acceptedTime);
+      $intervals[] = $interval->i;
+
+    }
+
+  }
+
+  public function changeDateFormat($date)
+  {
+    $date = new DateTime($date);
+    return $date->format('Y-m-d H:i:s');
+  }
+
+  /**
+   * @param $fromDate
+   * @param $toDate
+   * @param $statusId
+   * @return mixed
+   */
+  public function getOrdersInTimeFrame($fromDate, $toDate, $statusId = null)
+  {
+    $this->order= new Order();
+    $orderQuery=$this->order->query();
+    $orderQuery->where('order_date', '>=', $fromDate)->where('order_date', '<=', $toDate);
+    if ($statusId != null) {
+      $orderQuery->where('status_id', $statusId);
+    }
+    return $orderQuery->get();
+  }
+
+  /**
+   *  This method returns  percentage
+   *
+   * @param $totalOrders
+   * @param $totalDeliveredOrders
+   * @return float|int
+   */
+  public function calculatePercentage($numerator, $denominator)
+  {
+    if ($numerator > 0 && $denominator > 0) {
+      return (($numerator / $denominator) * 100);
+    }
+    return 0;
+  }
+
+  /**
+   * calculate gross sale of orders
+   *
+   * @param $orders
+   * @return int|mixed
+   */
+  public function calculateTotalPrice($orders)
+  {
+    $totalPrice=0;
+    if($orders!=null)
+    {
+      foreach ($orders as $order)
+      {
+        $totalPrice=$totalPrice+$order->total_price;
+      }
+    }
+    return $totalPrice;
+  }
+
 }

@@ -108,9 +108,12 @@ Route::get('/form/layouts-horizontal', [HorizontalForm::class, 'index'])->name('
 // tables
 Route::get('/tables/basic', [TablesBasic::class, 'index'])->name('tables-basic');
 
-Route::get('/reports', [\App\Http\Controllers\reports\ItemSale::class, 'index']);
-Route::get('/line-chart', [\App\Http\Controllers\LineChartController::class, 'lineChart']);
-Route::get('/perfomance', [\App\Http\Controllers\Reports\Perfomance::class, 'perfomance']);
+//Reports
+Route::get('/performance', [\App\Http\Controllers\PerformanceReport::class, 'index'])->name('performance');
+Route::get('/availability', [\App\Http\Controllers\AvailabilityReport::class, 'index'])->name('availability');
+
+
+
 
 
 

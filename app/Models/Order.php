@@ -2,15 +2,24 @@
 
 namespace App\Models;
 
+use App\Models\OrderStatusLog;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-
+use App\Models\OrderItem;
 class Order extends Model
 {
   use HasFactory;
 
   protected $table = 'orders';
 
+
+  public function StatusLogs() {
+    return $this->hasMany(OrderStatusLog::class, 'order_id', 'id');
+  }
+
+  public function Items() {
+    return $this->hasMany(OrderItem::class, 'order_id', 'id');
+  }
 
   public function getById($id) {
     return $this->find($id);
@@ -29,6 +38,7 @@ class Order extends Model
     $this->offer_discount = $data['offer_discount'];
     $this->customer_loyalty = $data['customer_loyalty'];
     $this->prepare_for = $data['prepare_for'];
+    $this->order_date=$data['order_date'];
 
      $this->save();
      return $this->id;

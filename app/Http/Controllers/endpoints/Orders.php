@@ -10,6 +10,7 @@ use App\Helpers\OrderHelper;
 use Illuminate\Support\Facades\Log;
 use App\Models\OrderItem;
 use Mockery\Exception;
+use DateTime;
 
 class Orders extends Controller
 {
@@ -24,7 +25,9 @@ class Orders extends Controller
    * @var OrderStatusLog
    */
   protected $orderStatusLog;
-
+  /**
+   * @var OrderItem
+   */
   protected $orderItem;
   /**
    * @var OrderHelper
@@ -35,6 +38,7 @@ class Orders extends Controller
    * @param Order $order
    * @param OrderHelper $orderHelper
    * @param OrderStatusLog $orderStatusLog
+   * @param OrderItem $orderItem
    */
   public function __construct(Order $order, OrderHelper $orderHelper, OrderStatusLog $orderStatusLog, OrderItem $orderItem)
   {
@@ -98,6 +102,7 @@ class Orders extends Controller
         $orders = $content['orders'];
         foreach ($orders as $order) {
           //Add Order Data
+          $this->order = new Order();
           $order['order_id'] = $this->order->add($this->orderHelper->mapOrderData($order));
           //Add Order Logs
           $logs = $this->orderHelper->mapOrderStatusLogs($order);

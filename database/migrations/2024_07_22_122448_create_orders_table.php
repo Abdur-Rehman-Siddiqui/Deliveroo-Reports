@@ -14,7 +14,7 @@ return new class extends Migration {
       $table->id();
       $table->string('deliveroo_order_id');
       $table->string('order_number');
-      $table->string('order_date')->nullable();
+      $table->dateTime('order_date');
       $table->bigInteger('restaurant_id')->unsigned();
       $table->bigInteger('status_id')->unsigned();
       $table->double('subtotal');
